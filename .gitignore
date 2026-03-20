@@ -1,0 +1,13 @@
+# Node
+node_modules/
+
+# Environment
+.env
+backend/.env
+
+# Prisma
+backend/prisma/migrations/
+
+# OS/editor
+.DS_Store
+.vscode/
