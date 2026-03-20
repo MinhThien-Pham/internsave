@@ -1,130 +1,30 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>InternSave</title>
-    <link rel="stylesheet" href="popup.css" />
-  </head>
-  <body>
-    <main class="container">
-      <header>
-        <h1>InternSave</h1>
-        <button id="settingsBtn" class="ghost-btn">Backend</button>
-      </header>
 
-      <section class="toolbar">
-        <button id="openAddModalBtn" class="primary-btn">Add Application</button>
-        <select id="statusFilter">
-          <option value="">All Statuses</option>
-          <option>Saved</option>
-          <option>Applied</option>
-          <option>OA</option>
-          <option>Interview</option>
-          <option>Rejected</option>
-          <option>Offer</option>
-        </select>
-      </section>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InternSave</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
 
-      <section id="applicationsList" class="applications-list"></section>
-    </main>
+<body>
+  <main class="container">
+    <header>
+      <h1>InternSave</h1>
+      <p>Quick launcher</p>
+    </header>
 
-    <div id="addModal" class="modal hidden">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2>Add Internship</h2>
-          <button id="closeAddModalBtn" class="icon-btn">&times;</button>
-        </div>
+    <section class="actions">
+      <button id="saveBtn" class="primary-btn" type="button">Save</button>
+      <button id="applyBtn" class="primary-btn" type="button">Apply</button>
+      <button id="viewListBtn" class="ghost-btn" type="button">View List</button>
+    </section>
 
-        <form id="addForm">
-          <label>employer*</label>
-          <input id="employerInput" required />
+    <p id="statusText" class="status-text" aria-live="polite"></p>
+  </main>
 
-          <label>title*</label>
-          <input id="titleInput" required />
+  <script type="module" src="popup.js"></script>
+</body>
 
-          <label>location</label>
-          <input id="locationInput" />
-
-          <label>platform*</label>
-          <select id="platformInput" required>
-            <option>Handshake</option>
-            <option>LinkedIn</option>
-            <option>Indeed</option>
-            <option>Other</option>
-          </select>
-
-          <label>status*</label>
-          <select id="statusInput" required>
-            <option>Saved</option>
-            <option>Applied</option>
-            <option>OA</option>
-            <option>Interview</option>
-            <option>Rejected</option>
-            <option>Offer</option>
-          </select>
-
-          <label>applied_at</label>
-          <input id="appliedAtInput" type="date" />
-
-          <label>job_url</label>
-          <div class="row">
-            <input id="jobUrlInput" type="url" placeholder="https://..." />
-            <button id="useTabUrlBtn" type="button" class="ghost-btn">Use Tab URL</button>
-          </div>
-
-          <div class="row">
-            <button id="aiAutofillBtn" type="button" class="ghost-btn">AI Autofill</button>
-          </div>
-          <p id="aiAutofillStatus" class="helper-text" aria-live="polite"></p>
-
-          <label>notes</label>
-          <textarea id="notesInput" rows="4"></textarea>
-
-          <button class="primary-btn" type="submit">Save</button>
-        </form>
-      </div>
-    </div>
-
-    <div id="editModal" class="modal hidden">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2>Edit Status + Notes</h2>
-          <button id="closeEditModalBtn" class="icon-btn">&times;</button>
-        </div>
-
-        <form id="editForm">
-          <label>status*</label>
-          <select id="editStatusInput" required>
-            <option>Saved</option>
-            <option>Applied</option>
-            <option>OA</option>
-            <option>Interview</option>
-            <option>Rejected</option>
-            <option>Offer</option>
-          </select>
-
-          <label>notes</label>
-          <textarea id="editNotesInput" rows="5"></textarea>
-
-          <button class="primary-btn" type="submit">Update</button>
-        </form>
-      </div>
-    </div>
-
-    <div id="settingsModal" class="modal hidden">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2>Backend Settings</h2>
-          <button id="closeSettingsModalBtn" class="icon-btn">&times;</button>
-        </div>
-
-        <label>API Base URL</label>
-        <input id="backendUrlInput" type="url" placeholder="http://localhost:3000" />
-        <button id="saveBackendBtn" class="primary-btn" type="button">Save URL</button>
-      </div>
-    </div>
-
-    <script src="popup.js"></script>
-  </body>
 </html>

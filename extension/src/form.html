@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>InternSave Form</title>
+    <link rel="stylesheet" href="form.css" />
+</head>
+
+<body>
+    <main class="layout">
+        <header class="topbar">
+            <div>
+                <h1 id="formTitle">Add Internship</h1>
+                <p id="subtitle" class="subtitle">AI prefill runs automatically. You can edit everything before saving.
+                </p>
+            </div>
+            <div class="topbar-actions">
+                <button id="retryAiBtn" class="secondary-btn retry-btn" type="button" aria-label="Retry AI prefill">
+                    <span class="retry-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" role="img" focusable="false">
+                            <path d="M4.93 4.93A10 10 0 1012 2v2a8 8 0 11-5.66 2.34L10 10H2V2z" />
+                        </svg>
+                    </span>
+                    <span>Retry</span>
+                </button>
+                <button id="openListBtn" class="secondary-btn" type="button">View List</button>
+            </div>
+        </header>
+
+        <section id="statusBanner" class="status-banner" aria-live="polite"></section>
+
+        <form id="applicationForm" class="form-grid">
+            <label for="employerInput">employer*</label>
+            <input id="employerInput" required />
+
+            <label for="titleInput">title*</label>
+            <input id="titleInput" required />
+
+            <label for="locationInput">location</label>
+            <input id="locationInput" />
+
+            <label for="platformInput">platform*</label>
+            <select id="platformInput" required>
+                <option>Handshake</option>
+                <option>LinkedIn</option>
+                <option>Indeed</option>
+                <option>Other</option>
+            </select>
+
+            <label for="statusInput">status*</label>
+            <select id="statusInput" required>
+                <option>Saved</option>
+                <option>Applied</option>
+                <option>OA</option>
+                <option>Interview</option>
+                <option>Rejected</option>
+                <option>Offer</option>
+            </select>
+
+            <label for="appliedAtInput">applied_at</label>
+            <input id="appliedAtInput" type="datetime-local" />
+
+            <label for="jobUrlInput">job_url</label>
+            <input id="jobUrlInput" type="url" placeholder="https://..." />
+
+            <label for="notesInput">notes</label>
+            <textarea id="notesInput" rows="7"></textarea>
+
+            <div class="form-actions">
+                <button id="submitBtn" class="primary-btn" type="submit">Save Application</button>
+            </div>
+        </form>
+    </main>
+
+    <script type="module" src="form.js"></script>
+</body>
+
+</html>

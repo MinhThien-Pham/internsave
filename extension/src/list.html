@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>InternSave List</title>
+    <link rel="stylesheet" href="list.css" />
+</head>
+
+<body>
+    <main class="layout">
+        <header class="header">
+            <div>
+                <h1>InternSave Applications</h1>
+                <p>Track every application in one readable table.</p>
+            </div>
+            <div class="header-actions">
+                <input id="backendUrlInput" type="url" placeholder="http://localhost:3000" />
+                <button id="saveBackendBtn" class="secondary-btn" type="button">Save Backend URL</button>
+                <button id="refreshBtn" class="secondary-btn" type="button">Refresh</button>
+            </div>
+        </header>
+
+        <section id="statusBanner" class="status-banner" aria-live="polite"></section>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>employer</th>
+                        <th>title</th>
+                        <th>location</th>
+                        <th>applied_at</th>
+                        <th>status</th>
+                        <th>platform</th>
+                        <th>job_url</th>
+                        <th>notes</th>
+                        <th>actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <script type="module" src="list.js"></script>
+</body>
+
+</html>
