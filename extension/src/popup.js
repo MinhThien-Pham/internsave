@@ -106,6 +106,35 @@ function buildCompactPageSummary(pageData) {
   return JSON.stringify(summary);
 }
 
+function inferLocationFromPageData(pageData) {
+  const jobLocation = pageData?.jobPosting?.jobLocation || '';
+  const headingText = Array.isArray(pageData?.headings) ? pageData.headings.join(' ') : '';
+  const metaText = pageData?.meta ? Object.values(pageData.meta).join(' ') : '';
+  const combined = [
+    pageData?.title || '',
+    jobLocation,
+    headingText,
+    metaText,
+    pageData?.visibleText || ''
+  ]
+    .join(' ')
+    .toLowerCase();
+
+  const isRemote = /\bremote\b|work\s*from\s*home|work\s*remotely|100%\s*remote/.test(combined);
+  const hasUnitedStates =
+    /united states|\bu\.?s\.?a?\b|\bus\s+work\s+authorization\b/.test(combined);
+
+  if (isRemote) {
+    return hasUnitedStates ? 'Remote (United States)' : 'Remote';
+  }
+
+  if (typeof jobLocation === 'string' && jobLocation.trim()) {
+    return jobLocation.trim();
+  }
+
+  return '';
+}
+
 function extractFirstJsonObject(text) {
   if (!text) return null;
 
@@ -188,6 +217,7 @@ async function requestLocalAiAutofill(pageSummary) {
     AI_FIELD_KEYS.join(', '),
     'Rules:',
     '- If unknown, return empty string.',
+    '- For location: if the posting says remote/work from home, return "Remote". If it specifies United States, return "Remote (United States)".',
     '- status must be "Saved".',
     '- applied_at must be empty string.',
     '- platform must be one of Handshake, LinkedIn, Indeed, Other.',
@@ -266,6 +296,10 @@ async function handleAiAutofill() {
     const aiRaw = await requestLocalAiAutofill(pageSummary);
 
     const normalized = normalizeAiResult(aiRaw, tab.url);
+    const inferredLocation = inferLocationFromPageData(pageData);
+    if (!normalized.location && inferredLocation) {
+      normalized.location = inferredLocation;
+    }
     applyAutofillToForm(normalized);
 
     setAiStatus('AI Autofill complete. Review and edit before saving.', 'success');
