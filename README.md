@@ -6,6 +6,7 @@ InternSave is a personal Chrome extension MVP for saving and tracking internship
 
 This project is intentionally small and demo-friendly:
 - Add internship applications from a Chrome popup
+- AI Autofill form fields from the current open job page (local Ollama)
 - View saved applications in the popup
 - Update status and notes
 - Delete applications
@@ -24,6 +25,8 @@ Out of scope by design:
 ### Architecture
 
 Chrome Extension Popup (HTML/CSS/JS)
+-> Current Page Extraction (content script injection)
+-> Local Ollama AI (http://127.0.0.1:11434)
 -> Express REST API (Node.js)
 -> Prisma ORM
 -> PostgreSQL (Vultr)
@@ -48,6 +51,7 @@ internsave/
       popup.html
       popup.css
       popup.js
+      pageExtractor.js
   README.md
 ```
 
@@ -65,7 +69,8 @@ Extension:
 - `extension/manifest.json`: extension configuration
 - `extension/src/popup.html`: popup UI layout
 - `extension/src/popup.css`: popup styling
-- `extension/src/popup.js`: popup CRUD logic + backend calls
+- `extension/src/popup.js`: popup CRUD logic + backend calls + AI autofill
+- `extension/src/pageExtractor.js`: current-page data extraction helper for AI autofill
 
 Project:
 - `.gitignore`
@@ -140,21 +145,56 @@ Backend default URL:
 
 ### Extension
 
+Optional local AI setup for Autofill:
+
+```bash
+# install Ollama from https://ollama.com/
+ollama serve
+ollama pull qwen2.5:3b
+```
+
+If Ollama is not running, the extension still works for normal CRUD and backend operations.
+
 1. Open Chrome and go to `chrome://extensions`
 2. Enable `Developer mode`
 3. Click `Load unpacked`
 4. Select the `extension` folder
 5. Open the extension popup
 6. Click `Backend` to set API URL if needed
+7. Click `Add Application` and then `AI Autofill` on a job page to prefill fields
 
-## 7. Demo Flow
+## 7. AI Autofill Behavior (MVP)
+
+- The button reads only the current active tab page
+- The extension extracts title, meta tags, headings, visible text, structured `JobPosting`, and URL
+- A compact page summary is sent to local Ollama (no OpenAI dependency)
+- AI returns strict JSON for these fields:
+  - `employer`
+  - `title`
+  - `location`
+  - `applied_at`
+  - `status`
+  - `platform`
+  - `job_url`
+  - `notes`
+- Field rules:
+  - `status` is always `Saved`
+  - `applied_at` stays blank
+  - `job_url` uses current tab URL
+  - `platform` is inferred from hostname (`Handshake`, `LinkedIn`, `Indeed`, `Other`)
+  - unclear values are left as empty strings
+- Nothing is auto-saved; user reviews/edits and then clicks Save
+- If page analysis or Ollama fails, a clear error message is shown
+
+## 8. Demo Flow
 
 1. Start backend
 2. Open extension popup
 3. Click `Add Application`
-4. Optionally click `Use Tab URL` to autofill `job_url`
-5. Save application
-6. Edit status/notes
-7. Delete an entry
+4. Optionally click `AI Autofill` to prefill from the current job page
+5. Review and edit fields as needed
+6. Save application
+7. Edit status/notes
+8. Delete an entry
 
 This is enough for a realistic student MVP demo and portfolio challenge submission.

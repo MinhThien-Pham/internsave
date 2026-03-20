@@ -1,5 +1,9 @@
 const DEFAULT_API_URL = 'http://localhost:3000';
 const STORAGE_KEY = 'internsave_backend_url';
+const OLLAMA_URL = 'http://127.0.0.1:11434/api/generate';
+const OLLAMA_MODEL = 'qwen2.5:3b';
+
+const AI_FIELD_KEYS = ['employer', 'title', 'location', 'applied_at', 'status', 'platform', 'job_url', 'notes'];
 
 const statusOptions = ['Saved', 'Applied', 'OA', 'Interview', 'Rejected', 'Offer'];
 
@@ -25,11 +29,252 @@ const statusInputEl = document.getElementById('statusInput');
 const appliedAtInputEl = document.getElementById('appliedAtInput');
 const jobUrlInputEl = document.getElementById('jobUrlInput');
 const notesInputEl = document.getElementById('notesInput');
+const aiAutofillBtnEl = document.getElementById('aiAutofillBtn');
+const aiAutofillStatusEl = document.getElementById('aiAutofillStatus');
 
 const editStatusInputEl = document.getElementById('editStatusInput');
 const editNotesInputEl = document.getElementById('editNotesInput');
 
 const backendUrlInputEl = document.getElementById('backendUrlInput');
+
+function setAiStatus(message, type = '') {
+  if (!aiAutofillStatusEl) return;
+  aiAutofillStatusEl.textContent = message;
+  aiAutofillStatusEl.classList.remove('error', 'success');
+  if (type) aiAutofillStatusEl.classList.add(type);
+}
+
+function inferPlatformFromUrl(url) {
+  if (!url) return 'Other';
+  let host = '';
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return 'Other';
+  }
+
+  if (host.includes('handshake')) return 'Handshake';
+  if (host.includes('linkedin')) return 'LinkedIn';
+  if (host.includes('indeed')) return 'Indeed';
+  return 'Other';
+}
+
+function sanitizeAiValue(value) {
+  if (typeof value !== 'string') return '';
+  return value.trim();
+}
+
+function normalizeAiResult(raw, currentUrl) {
+  const normalized = {
+    employer: '',
+    title: '',
+    location: '',
+    applied_at: '',
+    status: 'Saved',
+    platform: inferPlatformFromUrl(currentUrl),
+    job_url: currentUrl || '',
+    notes: ''
+  };
+
+  if (!raw || typeof raw !== 'object') return normalized;
+
+  normalized.employer = sanitizeAiValue(raw.employer);
+  normalized.title = sanitizeAiValue(raw.title);
+  normalized.location = sanitizeAiValue(raw.location);
+  normalized.notes = sanitizeAiValue(raw.notes);
+
+  return normalized;
+}
+
+function compactText(value, maxLen) {
+  if (!value || typeof value !== 'string') return '';
+  return value.replace(/\s+/g, ' ').trim().slice(0, maxLen);
+}
+
+function buildCompactPageSummary(pageData) {
+  const summary = {
+    url: compactText(pageData?.url || '', 500),
+    title: compactText(pageData?.title || '', 300),
+    meta: pageData?.meta || {},
+    headings: Array.isArray(pageData?.headings)
+      ? pageData.headings.map((item) => compactText(item, 160)).filter(Boolean).slice(0, 20)
+      : [],
+    jobPosting: pageData?.jobPosting || null,
+    visibleText: compactText(pageData?.visibleText || '', 6000)
+  };
+
+  return JSON.stringify(summary);
+}
+
+function extractFirstJsonObject(text) {
+  if (!text) return null;
+
+  const start = text.indexOf('{');
+  if (start < 0) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < text.length; i += 1) {
+    const char = text[i];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === '\\') {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === '{') depth += 1;
+    if (char === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
+function parseAiJsonResponse(responseText) {
+  try {
+    return JSON.parse(responseText);
+  } catch {
+    const candidate = extractFirstJsonObject(responseText);
+    if (!candidate) throw new Error('AI did not return valid JSON');
+    return JSON.parse(candidate);
+  }
+}
+
+async function getActiveTab() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  return tab || null;
+}
+
+async function extractCurrentPageData(tabId) {
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ['src/pageExtractor.js']
+  });
+
+  const results = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => {
+      if (typeof window.__internsaveExtractPageData !== 'function') return null;
+      return window.__internsaveExtractPageData();
+    }
+  });
+
+  const result = results?.[0]?.result;
+  if (!result) throw new Error('Could not read current page content');
+  return result;
+}
+
+async function requestLocalAiAutofill(pageSummary) {
+  const prompt = [
+    'You extract internship application fields from a job page summary.',
+    'Return JSON only with these exact keys and string values:',
+    AI_FIELD_KEYS.join(', '),
+    'Rules:',
+    '- If unknown, return empty string.',
+    '- status must be "Saved".',
+    '- applied_at must be empty string.',
+    '- platform must be one of Handshake, LinkedIn, Indeed, Other.',
+    '- Keep notes short and useful.',
+    '',
+    'Page summary JSON:',
+    pageSummary
+  ].join('\n');
+
+  let response;
+  try {
+    response = await fetch(OLLAMA_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: OLLAMA_MODEL,
+        prompt,
+        stream: false,
+        format: 'json',
+        options: {
+          temperature: 0
+        }
+      })
+    });
+  } catch {
+    throw new Error('Local AI unavailable. Start Ollama at http://127.0.0.1:11434 and try again.');
+  }
+
+  if (!response.ok) {
+    throw new Error(`Local AI request failed (${response.status})`);
+  }
+
+  const data = await response.json();
+  if (!data?.response || typeof data.response !== 'string') {
+    throw new Error('Local AI returned an unexpected response');
+  }
+
+  return parseAiJsonResponse(data.response);
+}
+
+function applyAutofillToForm(values) {
+  employerInputEl.value = values.employer;
+  titleInputEl.value = values.title;
+  locationInputEl.value = values.location;
+  appliedAtInputEl.value = '';
+  statusInputEl.value = 'Saved';
+  platformInputEl.value = values.platform;
+  jobUrlInputEl.value = values.job_url;
+  notesInputEl.value = values.notes;
+}
+
+async function handleAiAutofill() {
+  if (!aiAutofillBtnEl) return;
+
+  aiAutofillBtnEl.disabled = true;
+  setAiStatus('Analyzing current page...');
+
+  try {
+    const tab = await getActiveTab();
+    if (!tab?.id || !tab.url) {
+      throw new Error('No active tab found');
+    }
+
+    const urlProtocol = tab.url.startsWith('http://') || tab.url.startsWith('https://');
+    if (!urlProtocol) {
+      throw new Error('Open a job page on http or https before using AI Autofill');
+    }
+
+    const pageData = await extractCurrentPageData(tab.id);
+    const pageSummary = buildCompactPageSummary({
+      ...pageData,
+      url: tab.url
+    });
+
+    setAiStatus('Calling local AI model...');
+    const aiRaw = await requestLocalAiAutofill(pageSummary);
+
+    const normalized = normalizeAiResult(aiRaw, tab.url);
+    applyAutofillToForm(normalized);
+
+    setAiStatus('AI Autofill complete. Review and edit before saving.', 'success');
+  } catch (error) {
+    setAiStatus(error.message || 'AI Autofill failed', 'error');
+  } finally {
+    aiAutofillBtnEl.disabled = false;
+  }
+}
 
 function escapeHtml(text) {
   if (!text) return '';
@@ -239,6 +484,7 @@ document.getElementById('openAddModalBtn').addEventListener('click', () => {
   addFormEl.reset();
   statusInputEl.value = 'Saved';
   platformInputEl.value = 'Handshake';
+  setAiStatus('');
   openModal(addModalEl);
 });
 
@@ -271,11 +517,15 @@ document.getElementById('saveBackendBtn').addEventListener('click', async () => 
 });
 
 document.getElementById('useTabUrlBtn').addEventListener('click', async () => {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const tab = await getActiveTab();
   if (tab?.url) {
     jobUrlInputEl.value = tab.url;
   }
 });
+
+if (aiAutofillBtnEl) {
+  aiAutofillBtnEl.addEventListener('click', handleAiAutofill);
+}
 
 window.addEventListener('click', (event) => {
   if (event.target === addModalEl) closeModal(addModalEl);

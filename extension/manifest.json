@@ -3,7 +3,7 @@
   "name": "InternSave",
   "version": "1.0.0",
   "description": "Personal internship application tracker",
-  "permissions": ["storage", "tabs"],
+  "permissions": ["storage", "tabs", "scripting", "activeTab"],
   "action": {
     "default_popup": "src/popup.html",
     "default_title": "InternSave"
